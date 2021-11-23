@@ -1,0 +1,62 @@
+import requests
+import time
+import math
+import numpy as np
+from bs4 import BeautifulSoup
+import re
+
+# 로그인을 위해 세션 불러오기
+session=requests.session()
+
+url = "https://www.jobplanet.co.kr/users/sign_in?_nav=gb"
+user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36'
+headers = {'Content-type': 'application/json', 'Accept': 'text/plain', 'User-Agent':user_agent}
+login_data = {'user':{'email':'selina1031@hanyang.ac.kr', 'password':'Qwertyui1@', 'remember_me':'true'}}
+session = requests.session()
+
+login_response = session.post(url, json = login_data, headers = headers)
+
+#스크래핑 시작~
+
+category=[707,704]
+scraping_result=[]
+#들어가야할것 : 평점, 리뷰. 다만 10개씩 잘라서 동일 간격으로 30번만 반복
+# txtlink_page, txt1(별점), us_label(한줄평)
+#동일 페이지 간격으로 총 300개 내외의 리뷰를 뽑아내기 위해 리뷰 총 개수 구하기
+
+for i in category:
+  time.sleep(0.5)
+  url="https://www.jobplanet.co.kr/reviews?&industry_id="+str(i)
+  response=session.get(url)
+  soup=BeautifulSoup(response.text,'html.parser')
+  review=soup.find('span', class_='num')
+  review=int(review.get_text())
+  page=math.floor(review/10)+1
+  page_count=math.floor(review/300)
+  
+  print(review) #리뷰총개수
+  print(page) #페이지 수
+  print(page_count) #읽어올 페이지 간격
+  
+  #리뷰 스크래핑  
+  for j in range(1,page,page_count):
+    time.sleep(0.5)
+    url="https://www.jobplanet.co.kr/reviews?&industry_id="+str(i)+"&page="+str(j)
+    response=session.get(url)
+    soup=BeautifulSoup(response.text,'html.parser')
+    point_label=soup.find_all('dd',class_='txt1')
+    review_label=soup.find_all('h2',class_='us_label')
+
+    #파싱 및 리스트 저장(2차원 배열)
+    for m, n in zip(point_label, review_label):
+      scraping_result.append([i,m.get_text(),n.get_text().replace('BEST','')])
+
+####페이지가 끝나 불러오기 오류가 나는 경우 예외 처리
+#    try:
+#      driver.find_element_by_css_selector("a.btn_pgnext").click()
+#      time.sleep(1)
+#    except:
+#      pass
+
+print(len(scraping_result))
+print(scraping_result[:50])
